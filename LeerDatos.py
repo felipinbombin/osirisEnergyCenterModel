@@ -14,7 +14,7 @@ def LeerAtributosAC(RedACID, Data, db_connection):
     # Resetear diccionario de datos generales
     Data['Atributos'] = dict()
     # Crear terminales en lado AC para red respectiva
-    sql = cur.mogrify('SELECT * FROM atributos_terminales WHERE Red_ID=%s;', (RedACID,))
+    sql = cur.mogrify('SELECT * FROM atributos_terminales WHERE red_id=%s;', (RedACID,))
     try:
         # Ejecutar query
         cur.execute(sql)
@@ -183,7 +183,7 @@ def LeerEscenariosAC(Data, Fecha_ini, Fecha_fin, db_connection):
         PerfilPVSim = dict()
         for PVacID, PVac in Data['Atributos']['PVacData'].items():
             Perfil = PVac['Perfil']
-            sql = cur.mogrify('SELECT * FROM perfiles_pv WHERE Perfil_ID=%s AND Fecha>=%s AND Fecha<%s ORDER BY Fecha;',
+            sql = cur.mogrify('SELECT * FROM perfiles_pv WHERE perfil_id=%s AND fecha>=%s AND fecha<%s ORDER BY fecha;',
                               (Perfil, Fecha_ini, Fecha_fin))
             try:
                 # Ejecutar query
@@ -204,7 +204,7 @@ def LeerEscenariosAC(Data, Fecha_ini, Fecha_fin, db_connection):
         PerfilSAFSim = dict()
         for SAFID, SAF in Data['Atributos']['SAFData'].items():
             ConsumoID = SAF['Consumo']
-            sql = cur.mogrify('SELECT * FROM perfiles_saf WHERE Consumo_ID=%s AND Fecha>=%s AND Fecha<%s ORDER BY Fecha;',
+            sql = cur.mogrify('SELECT * FROM perfiles_saf WHERE consumo_id=%s AND fecha>=%s AND fecha<%s ORDER BY fecha;',
                               (ConsumoID, Fecha_ini, Fecha_fin))
             try:
                 # Ejecutar query
@@ -240,7 +240,7 @@ def LeerAtributosDC(LineaID, Data, db_connection):
     Atributos = dict()
 
     # Verificar que línea especificada existe en base de datos
-    sql = cur.mogrify('SELECT * FROM atributos_lineas WHERE Linea_ID=%s;', (LineaID,))
+    sql = cur.mogrify('SELECT * FROM atributos_lineas WHERE linea_id=%s;', (LineaID,))
     try:
         # Ejecutar query
         cur.execute(sql)
@@ -253,7 +253,7 @@ def LeerAtributosDC(LineaID, Data, db_connection):
         raise ValueError('No se encuentra la línea especificada en la base de datos')
 
     # VIAS
-    sql = cur.mogrify('SELECT * FROM atributos_vias WHERE Linea_ID=%s;',(LineaID,))
+    sql = cur.mogrify('SELECT * FROM atributos_vias WHERE linea_id=%s;',(LineaID,))
     try:
         # Ejecutar query
         cur.execute(sql)
@@ -270,7 +270,7 @@ def LeerAtributosDC(LineaID, Data, db_connection):
         raise ValueError('No se encuentran vias para la línea especificada')
 
     # TRENES
-    sql = cur.mogrify('SELECT * FROM atributos_trenes WHERE Linea_ID=%s AND En_operacion=True;',(LineaID,))
+    sql = cur.mogrify('SELECT * FROM atributos_trenes WHERE linea_id=%s AND en_operacion=True;',(LineaID,))
     try:
         # Ejecutar query
         cur.execute(sql)
@@ -289,7 +289,7 @@ def LeerAtributosDC(LineaID, Data, db_connection):
 
     # SER
     # Obtener SER de la línea
-    sql = cur.mogrify('SELECT Elemento_ID FROM lista_elementos_dc WHERE Linea_ID=%s AND Tipo=\'SER\';', (LineaID,))
+    sql = cur.mogrify('SELECT elemento_id FROM lista_elementos_dc WHERE linea_id=%s AND tipo=\'SER\';', (LineaID,))
     try:
         # Ejecutar query
         cur.execute(sql)
@@ -301,7 +301,7 @@ def LeerAtributosDC(LineaID, Data, db_connection):
             # Obtener ID de cada SER
             SERID = row['elemento_id']
             # Sacar vias que alimenta cada SER
-            sql = 'SELECT * FROM atributos_ser WHERE SER_ID="{}" AND En_operacion=True;'.format(SERID)
+            sql = cur.mogrify('SELECT * FROM atributos_ser WHERE ser_id=%s AND en_operacion=True;', (SERID,))
             try:
                 cur.execute(sql)
                 results = cur.fetchall()
@@ -330,7 +330,7 @@ def LeerAtributosDC(LineaID, Data, db_connection):
 
     # módulos PV en lado de tracción
     # Obtener PVDC de la línea
-    sql = cur.mogrify('SELECT Elemento_ID FROM lista_elementos_dc WHERE Linea_ID=%s AND Tipo="PVDC";', (LineaID,))
+    sql = cur.mogrify('SELECT elemento_id FROM lista_elementos_dc WHERE linea_id=%s AND tipo=\'PVDC\';', (LineaID,))
     try:
         # Ejecutar query
         cur.execute(sql)
@@ -342,7 +342,7 @@ def LeerAtributosDC(LineaID, Data, db_connection):
             # Obtener ID de cada SER
             PVDCID = row['elemento_id']
             # Sacar vias que alimenta cada SER
-            sql = 'SELECT * FROM atributos_pvdc WHERE Linea_ID="{}" AND En_operacion=True;'.format(LineaID)
+            sql = cur.mogrify('SELECT * FROM atributos_pvdc WHERE linea_id=%s AND en_operacion=True;', (LineaID,))
             try:
                 cur.execute(sql)
                 results = cur.fetchall()
@@ -384,7 +384,7 @@ def LeerEscenariosDC(LineaID, Data, Fecha_ini, Fecha_fin, db_connection):
     # Crear diccionario de datos de simulación para trenes
     BitacoraTren = dict()
     for TrenID, tren in Data['Atributos']['TrenesData'].items():
-        sql = cur.mogrify('SELECT * FROM bitacora_trenes where Linea_ID=%s and Fecha>=%s and Fecha<%s and Tren_ID=%s order by Fecha;',
+        sql = cur.mogrify('SELECT * FROM bitacora_trenes where linea_id=%s and fecha>=%s and fecha<%s and tren_id=%s order by fecha;',
                           (LineaID, Fecha_ini, Fecha_fin, TrenID))
         try:
             # Ejecutar query
@@ -397,8 +397,7 @@ def LeerEscenariosDC(LineaID, Data, Fecha_ini, Fecha_fin, db_connection):
                 Bitacora[row['fecha']] = {'pos': row['posicion'], 'P': row['potencia']}
             # Guardar bitácora de cada tren
             BitacoraTren[TrenID] = Bitacora
-        except Exception as e:
-            raise e
+        except:
             raise ValueError('No se encuentran bitacoras disponibles para trenes de la línea')
     # Guardar bitácoras en diccionario de perfiles para simulaciones
     Escenario['Trenes'] = BitacoraTren
@@ -407,7 +406,7 @@ def LeerEscenariosDC(LineaID, Data, Fecha_ini, Fecha_fin, db_connection):
     # Crear diccionario de datos de simulación para trenes
     PerfilPV = dict()
     for PVID, PVdcdata in Data['Atributos']['PVdcData'].items():
-        sql = cur.mogrify('SELECT * FROM perfiles_pv where Fecha>=%s and Fecha<%s and Perfil_ID=%s order by Fecha;',
+        sql = cur.mogrify('SELECT * FROM perfiles_pv where fecha>=%s and fecha<%s and perfil_id=%s order by fecha;',
                           (Fecha_ini, Fecha_fin, PVdcdata['Perfil']))
         try:
             # Ejecutar query
