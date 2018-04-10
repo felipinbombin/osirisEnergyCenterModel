@@ -28,8 +28,6 @@ Cochrane = RedAC.RedAC('Cochrane', DatosCochrane)
 # Definir escenario de simulación con el diccionario creado anteriormente
 Cochrane.DefinirSimulacion(DatosCochrane)
 
-db_connection.close()
-
 # Simular operación conjunto de red AC y línea de metro con potencia base Sbase = 1 [MW]
 Cochrane.simular(1)
 
@@ -37,7 +35,8 @@ Cochrane.simular(1)
 Resultados = Cochrane.saveresults()
 
 # Guardar resultados de simulaciones de red AC en base de datos
-GuardarDatos.saveACresults(Cochrane.ID, Resultados, 'sim1', 'localhost', 'modelo_datos_metrosolar','root', '1234')
+GuardarDatos.saveACresults(Cochrane.ID, Resultados, 'sim1', db_connection)
+db_connection.close()
 
 # Graficar resultados para red AC
 Cochrane.plotresults()
