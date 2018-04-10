@@ -1,11 +1,8 @@
 # -*- coding: utf-8 -*-
-import psycopg2
 
-def saveACresults(RedAC, ResData, simID, ServerIP, DatabaseName, User, Password):
-    # Crear conexión con servidor y base de datos
-    connection = psycopg2.connect(host=ServerIP, port=5432, user=User, password=Password, dbname=DatabaseName)
+def saveACresults(RedAC, ResData, simID, db_connection):
     # Crear cursor para realizar query
-    cur = connection.cursor()
+    cur = db_connection.cursor()
 
     # Guardar resultados de simulación para cada terminal
     for Bus, BusRes in ResData['Terminales'].items():
@@ -14,6 +11,7 @@ def saveACresults(RedAC, ResData, simID, ServerIP, DatabaseName, User, Password)
         delta = list()
         P = list()
         Q = list()
+
         for fecha, Res in BusRes.items():
             fechas.append(fecha)
             V.append(Res['V'])
@@ -21,7 +19,7 @@ def saveACresults(RedAC, ResData, simID, ServerIP, DatabaseName, User, Password)
             P.append(Res['P'])
             Q.append(Res['Q'])
         # Query para intentar recuperar datos la simulación si es que existen
-        sql = 'SELECT * FROM resultados_terminales WHERE Sim_ID="{}" AND Term_ID="{}" AND Fecha>"{}" AND Fecha<="{}" AND Red_ID="{}";'.format(simID, Bus, min(fechas), max(fechas), RedAC)
+        sql = cur.mogrify('SELECT * FROM resultados_terminales WHERE sim_id=%s AND term_id=%s AND fecha>%s AND fecha<=%s AND red_id=%s;', (simID, Bus, min(fechas), max(fechas), RedAC))
         try:
             # Intentar recuperar datos para verificar si existen
             cur.execute(sql)
@@ -34,20 +32,20 @@ def saveACresults(RedAC, ResData, simID, ServerIP, DatabaseName, User, Password)
                     newdata.append([V[i], delta[i], P[i], Q[i], simID, fecha, Bus, RedAC])
                 # Primero tratar de actualizar campos en caso de que ya existan datos
                 cur.executemany(
-                    'UPDATE resultados_terminales SET V = %s, delta = %s, P = %s, Q = %s WHERE Sim_ID = %s AND Fecha = %s AND Term_ID = %s AND Red_ID = %s;',
+                    'UPDATE resultados_terminales SET v=%s, delta=%s, p=%s, q=%s WHERE sim_id = %s AND fecha = %s AND term_id = %s AND red_id = %s;',
                     newdata)
-                connection.commit()
+                db_connection.commit()
             # No existen datos por lo que se deben insertar
             else:
                 data = []
                 for i, fecha in enumerate(fechas):
                     data.append([simID, fecha, Bus, RedAC, V[i], delta[i], P[i], Q[i]])
                 cur.executemany(
-                    'INSERT INTO resultados_terminales (Sim_ID, Fecha, Term_ID, Red_ID, V, delta, P, Q) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)',
+                    'INSERT INTO resultados_terminales (sim_id, fecha, term_id, red_id, v, delta, p, q) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)',
                     data)
-                connection.commit()
+                db_connection.commit()
         except:
-            connection.rollback()
+            db_connection.rollback()
 
     # Guardar resultados de simulación para cada cable y trafo
     for Branch, BranchRes in ResData['Ramas'].items():
@@ -65,8 +63,8 @@ def saveACresults(RedAC, ResData, simID, ServerIP, DatabaseName, User, Password)
             Qloss.append(Res['Qloss'])
             Loading.append(Res['Loading'])
         # Query para intentar recuperar datos la simulación si es que existen
-        sql = 'SELECT * FROM resultados_branch WHERE Sim_ID="{}" AND Branch_ID="{}" AND Fecha>"{}" AND Fecha<="{}" AND Red_ID="{}";'.format(
-            simID, Branch, min(fechas), max(fechas), RedAC)
+        sql = cur.mogrify('SELECT * FROM resultados_branch WHERE sim_id=%s AND branch_id=%s AND fecha>%s AND fecha<=%s AND red_id=%s;',
+              (simID, Branch, min(fechas), max(fechas), RedAC))
         try:
             # Intentar recuperar datos para verificar si existen
             cur.execute(sql)
@@ -78,40 +76,36 @@ def saveACresults(RedAC, ResData, simID, ServerIP, DatabaseName, User, Password)
                 for fecha, i in enumerate(fechas):
                     newdata.append([Pf[i], Qf[i], Ploss[i], Qloss[i], Loading[i], simID, fecha,Branch, RedAC])
                 # Primero tratar de actualizar campos en caso de que ya existan datos
-                cur.executemany('UPDATE resultados_branch SET Pf = %s, Qf = %s, Ploss = %s, Qloss = %s, Loading = %s WHERE Sim_ID = %s AND Fecha = %s AND Branch_ID = %s AND Red_ID = %s;', newdata)
-                connection.commit()
+                cur.executemany('UPDATE resultados_branch SET pf = %s, qf = %s, ploss = %s, qloss = %s, loading = %s WHERE sim_id = %s AND fecha = %s AND branch_id = %s AND red_id = %s;', newdata)
+                db_connection.commit()
             # No existen datos por lo que se deben insertar
             else:
                 data = []
                 for i, fecha in enumerate(fechas):
                     data.append([simID, fecha, Branch, RedAC, Pf[i], Qf[i], Ploss[i],Qloss[i], Loading[i]])
                 cur.executemany(
-                    'INSERT INTO resultados_branch (Sim_ID, Fecha, Branch_ID, Red_ID, Pf, Qf, Ploss, Qloss, Loading) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)',
+                    'INSERT INTO resultados_branch (sim_id, fecha, branch_id, red_id, pf, qf, ploss, qloss, loading) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)',
                     data)
-                connection.commit()
+                db_connection.commit()
         except:
-            connection.rollback()
+            db_connection.rollback()
 
     # Cerrar cursor
     cur.close()
-    # Cerrar conexión a base de datos
-    connection.close()
 
-def saveDCresults(Linea, ResData, simID, ServerIP, DatabaseName, User, Password):
-    # Crear conexión a servidor y base de datos
-    connection = pymysql.Connect(host=ServerIP, port=3306, user=User, passwd=Password, db=DatabaseName)
 
+def saveDCresults(Linea, ResData, simID, db_connection):
     # Crear cursor para realizar query
-    cur = connection.cursor(pymysql.cursors.DictCursor)
+    cur = db_connection.cursor()
 
     # Guardar parámetros de simulación realizada
     try:
-        cur.execute(
-            'INSERT INTO resumen_simulaciones_dc (Sim_ID, E_SER, E_Trenes, E_Perdidas, E_almacenable) VALUES ("{}","{}","{}",{},{}) ON DUPLICATE KEY UPDATE E_SER=VALUES(E_SER), E_Trenes=VALUES(E_Trenes), E_Perdidas=VALUES(E_Perdidas), E_almacenable=VALUES(E_almacenable);'.format(
-simID, sum(ResData['General']['PSER']), sum(ResData['General']['PTrenes']), sum(ResData['General']['Perdidas']), -sum(ResData['General']['Pexc'])))
-        connection.commit()
+        sql = cur.mogrify('INSERT INTO resumen_simulaciones_dc (sim_id, e_ser, e_trenes, e_perdidas, e_almacenable) VALUES (%s,%s,%s, %s, %s) ON DUPLICATE KEY UPDATE e_ser=VALUES(e_ser), e_trenes=VALUES(e_trenes), e_perdidas=VALUES(e_perdidas), e_almacenable=VALUES(e_almacenable);',
+            (simID, sum(ResData['General']['PSER']), sum(ResData['General']['PTrenes']), sum(ResData['General']['Perdidas']), -sum(ResData['General']['Pexc'])))
+        cur.execute(sql)
+        db_connection.commit()
     except:
-        connection.rollback()
+        db_connection.rollback()
         raise ValueError("no se definieron parámetros válidos para registrar la simulación.")
 
     # Guardar resultados de simulación para cada tren
@@ -124,7 +118,7 @@ simID, sum(ResData['General']['PSER']), sum(ResData['General']['PTrenes']), sum(
             V .append(Res['V'])
             P.append(Res['P'])
         # Query para intentar recuperar datos la simulación si es que existen
-        sql = 'SELECT * FROM resultados_elementos_dc WHERE Sim_ID="{}" AND Elemento_ID="{}" AND Fecha>"{}" AND Fecha<="{}";'.format(simID, Tren, min(fechas), max(fechas))
+        sql = 'SELECT * FROM resultados_elementos_dc WHERE Sim_ID=%s AND Elemento_ID=%s AND Fecha>%s AND Fecha<=%s;'.format(simID, Tren, min(fechas), max(fechas))
         try:
             # Intentar recuperar datos para verificar si existen
             cur.execute(sql)
@@ -139,7 +133,7 @@ simID, sum(ResData['General']['PSER']), sum(ResData['General']['PTrenes']), sum(
                 cur.executemany(
                     'UPDATE resultados_elementos_dc SET V = %s, P = %s WHERE Sim_ID = %s AND Fecha = %s AND Elemento_ID = %s AND Linea_ID = %s;',
                     newdata)
-                connection.commit()
+                db_connection.commit()
             # No existen datos por lo que se deben insertar
             else:
                 data = []
@@ -148,9 +142,9 @@ simID, sum(ResData['General']['PSER']), sum(ResData['General']['PTrenes']), sum(
                 cur.executemany(
                     'INSERT INTO resultados_elementos_dc (Sim_ID, Fecha, Elemento_ID, Linea_ID, V, P) VALUES (%s, %s, %s, %s, %s, %s)',
                     data)
-                connection.commit()
+                db_connection.commit()
         except:
-            connection.rollback()
+            db_connection.rollback()
 
     # Guardar resultados de simulación para cada SER
     for SER, SERRes in ResData['SER'].items():
@@ -162,7 +156,7 @@ simID, sum(ResData['General']['PSER']), sum(ResData['General']['PTrenes']), sum(
             V .append(Res['V'])
             P.append(Res['P'])
         # Query para intentar recuperar datos la simulación si es que existen
-        sql = 'SELECT * FROM resultados_elementos_dc WHERE Sim_ID="{}" AND Elemento_ID="{}" AND Fecha>"{}" AND Fecha<="{}";'.format(
+        sql = 'SELECT * FROM resultados_elementos_dc WHERE Sim_ID=%s AND Elemento_ID=%s AND Fecha>%s AND Fecha<=%s;'.format(
             simID, SER, min(fechas), max(fechas))
         try:
             # Intentar recuperar datos para verificar si existen
@@ -178,7 +172,7 @@ simID, sum(ResData['General']['PSER']), sum(ResData['General']['PTrenes']), sum(
                 cur.executemany(
                     'UPDATE resultados_elementos_dc SET V = %s, P = %s WHERE Sim_ID = %s AND Fecha = %s AND Elemento_ID = %s AND Linea_ID = %s;',
                     newdata)
-                connection.commit()
+                db_connection.commit()
             # No existen datos por lo que se deben insertar
             else:
                 data = []
@@ -187,9 +181,9 @@ simID, sum(ResData['General']['PSER']), sum(ResData['General']['PTrenes']), sum(
                 cur.executemany(
                     'INSERT INTO resultados_elementos_dc (Sim_ID, Fecha, Elemento_ID, Linea_ID, V, P) VALUES (%s, %s, %s, %s, %s, %s)',
                     data)
-                connection.commit()
+                db_connection.commit()
         except:
-            connection.rollback()
+            db_connection.rollback()
 
     # Guardar resultados de simulación para cada PV
     for PVdc, PVdcRes in ResData['PV'].items():
@@ -201,7 +195,7 @@ simID, sum(ResData['General']['PSER']), sum(ResData['General']['PTrenes']), sum(
             V .append(Res['V'])
             P.append(Res['P'])
         # Query para intentar recuperar datos la simulación si es que existen
-        sql = 'SELECT * FROM resultados_elementos_dc WHERE Sim_ID="{}" AND Elemento_ID="{}" AND Fecha>"{}" AND Fecha<="{}";'.format(
+        sql = 'SELECT * FROM resultados_elementos_dc WHERE Sim_ID=%s AND Elemento_ID=%s AND Fecha>%s AND Fecha<=%s;'.format(
             simID, PVdc, min(fechas), max(fechas))
         try:
             # Intentar recuperar datos para verificar si existen
@@ -217,7 +211,7 @@ simID, sum(ResData['General']['PSER']), sum(ResData['General']['PTrenes']), sum(
                 cur.executemany(
                     'UPDATE resultados_elementos_dc SET V = %s, P = %s WHERE Sim_ID = %s AND Fecha = %s AND Elemento_ID = %s AND Linea_ID = %s;',
                     newdata)
-                connection.commit()
+                db_connection.commit()
             # No existen datos por lo que se deben insertar
             else:
                 data = []
@@ -226,11 +220,9 @@ simID, sum(ResData['General']['PSER']), sum(ResData['General']['PTrenes']), sum(
                 cur.executemany(
                     'INSERT INTO resultados_elementos_dc (Sim_ID, Fecha, Elemento_ID, Linea_ID, V, P) VALUES (%s, %s, %s, %s, %s, %s)',
                     data)
-                connection.commit()
+                db_connection.commit()
         except:
-            connection.rollback()
+            db_connection.rollback()
 
     # Cerrar cursor
     cur.close()
-    # Cerrar conexión a base de datos
-    connection.close()
