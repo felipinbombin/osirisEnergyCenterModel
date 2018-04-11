@@ -1,0 +1,5 @@
+matplotlib==2.2.2
+numpy==1.14.2
+psycopg2==2.7.4
+PYPOWER==5.1.3
+scipy==1.0.1
