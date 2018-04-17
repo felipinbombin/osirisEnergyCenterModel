@@ -100,7 +100,9 @@ def saveDCresults(Linea, ResData, simID, db_connection):
 
     # Guardar parámetros de simulación realizada
     try:
-        sql = cur.mogrify('INSERT INTO resumen_simulaciones_dc (sim_id, e_ser, e_trenes, e_perdidas, e_almacenable) VALUES (%s,%s,%s, %s, %s) ON DUPLICATE KEY UPDATE e_ser=VALUES(e_ser), e_trenes=VALUES(e_trenes), e_perdidas=VALUES(e_perdidas), e_almacenable=VALUES(e_almacenable);',
+        sql = cur.mogrify('DELETE FROM resumen_simulaciones_dc WHERE sim_id=%s', (simID,))
+        cur.execute(sql)
+        sql = cur.mogrify('INSERT INTO resumen_simulaciones_dc (sim_id, e_ser, e_trenes, e_perdidas, e_almacenable) VALUES (%s,%s,%s, %s, %s);',
             (simID, sum(ResData['General']['PSER']), sum(ResData['General']['PTrenes']), sum(ResData['General']['Perdidas']), -sum(ResData['General']['Pexc'])))
         cur.execute(sql)
         db_connection.commit()
