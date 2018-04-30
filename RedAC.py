@@ -8,6 +8,7 @@ from pypower import loadcase
 from pypower import runpf
 from datetime import datetime
 
+
 ############################################################
 #                        CLASE LINEA                       #
 ############################################################
@@ -79,7 +80,8 @@ class RedAC:
         return newSAF
 
     # Función para agregar módulo PV en red AC
-    def addPVAC(self, PVacID, voltaje, capacidad, Perfil_P=None, Perfil_Q=None, Perfil=None, cosphi=None, Terminal=None):
+    def addPVAC(self, PVacID, voltaje, capacidad, Perfil_P=None, Perfil_Q=None, Perfil=None, cosphi=None,
+                Terminal=None):
         newPVAC = PVAC(self, PVacID, voltaje, capacidad, Perfil_P, Perfil_Q, Perfil, cosphi, Terminal)
         self.PVAC.append(newPVAC)
         return newPVAC
@@ -90,7 +92,7 @@ class RedAC:
         return newTrafo
 
     # Función para agregar cable en red AC
-    def addCable(self,CableID, capacidad, largo, resistencia, reactancia, capacitancia, Term1=None, Term2=None):
+    def addCable(self, CableID, capacidad, largo, resistencia, reactancia, capacitancia, Term1=None, Term2=None):
         newCable = Cable(self, CableID, capacidad, largo, resistencia, reactancia, capacitancia, Term1, Term2)
         return newCable
 
@@ -122,13 +124,15 @@ class RedAC:
         # Crear módulos PV de red AC
         for PVacID, PVacData in Data['Atributos']['PVacData'].items():
             Term = set(term for term in self.Terminales if term.Name == PVacData['TermID']).pop()
-            self.addPVAC(PVacID, PVacData['Vac'], PVacData['Snom'], None, None, PVacData['Perfil'], PVacData['cosphi'], Term)
+            self.addPVAC(PVacID, PVacData['Vac'], PVacData['Snom'], None, None, PVacData['Perfil'], PVacData['cosphi'],
+                         Term)
 
         # Crear cables para conectar terminales de red AC
         for CabelID, CablesData in Data['Atributos']['CablesData'].items():
             Term1 = set(term for term in self.Terminales if term.Name == CablesData['Term1']).pop()
             Term2 = set(term for term in self.Terminales if term.Name == CablesData['Term2']).pop()
-            newCable = self.addCable(CabelID, CablesData['Snom'], CablesData['L'], CablesData['r'], CablesData['x'], CablesData['c'], Term1, Term2)
+            newCable = self.addCable(CabelID, CablesData['Snom'], CablesData['L'], CablesData['r'], CablesData['x'],
+                                     CablesData['c'], Term1, Term2)
             newCable.Save = CablesData['Save']
 
     # Función para definir simulación
@@ -152,7 +156,7 @@ class RedAC:
             SAF.fechas = newFechas
             SAF.Consumo_P = Consumo_P
             SAF.Consumo_Q = Consumo_Q
-            SAF.t = [(fecha-newFechas[0]).total_seconds() for fecha in newFechas]
+            SAF.t = [(fecha - newFechas[0]).total_seconds() for fecha in newFechas]
             # Recuperar fechas definidas en cada perfil de consumo SAF
             newFechas = [fecha for fecha in PerfilSAF.keys()]
             # Quedarse con vector de fechas con mayor cantidad de datos
@@ -170,7 +174,7 @@ class RedAC:
             newFechas = list()
             for fecha, Perfil in PerfilPVac.items():
                 Perfil_P.append(Perfil['P'])
-                Perfil_Q.append(Perfil['P']*math.tan(math.acos(cosphi)))
+                Perfil_Q.append(Perfil['P'] * math.tan(math.acos(cosphi)))
                 newFechas.append(fecha)
             # Asignar inyecciones respectivos a cada objeto SAF de la red
             PVac.fechas = newFechas
@@ -206,7 +210,7 @@ class RedAC:
                 SimDates = linea.fechas
                 Interpolar = True
         # Crear vector de tiempo decimal de simulación
-        SimTime = [(fecha-SimDates[0]).total_seconds() for fecha in SimDates]
+        SimTime = [(fecha - SimDates[0]).total_seconds() for fecha in SimDates]
         self.fechas = SimDates
         self.t = SimTime
         # interpolar linealmente vectores de consumos de elementos AC para simulaciones
@@ -252,8 +256,8 @@ class RedAC:
 
         for PVAC in self.PVAC:
             # Actualizar matriz de generación con valores interpolados
-            self.genMatrix[PVAC.indice - 1, 1] = PVAC.P[t_index] / (Sbase*1000000)
-            self.genMatrix[PVAC.indice - 1, 2] = PVAC.Q[t_index] / (Sbase*1000000)
+            self.genMatrix[PVAC.indice - 1, 1] = PVAC.P[t_index] / (Sbase * 1000000)
+            self.genMatrix[PVAC.indice - 1, 2] = PVAC.Q[t_index] / (Sbase * 1000000)
 
             self.busMatrix = numpy.array([])
             self.branchMatrix = numpy.array([])
@@ -265,9 +269,9 @@ class RedAC:
         i = 0
         for branch in self.Branch:
             self.branchMatrix = numpy.concatenate((self.branchMatrix,
-                                            [branch.Term1.ID, branch.Term2.ID, branch.R, branch.X, branch.Y,
-                                            branch.Snom, branch.Snom, branch.Snom, branch.Turns, 0, 1, -360,
-                                            360]), 0)
+                                                   [branch.Term1.ID, branch.Term2.ID, branch.R, branch.X, branch.Y,
+                                                    branch.Snom, branch.Snom, branch.Snom, branch.Turns, 0, 1, -360,
+                                                    360]), 0)
             branch.branchindex = i
             i = i + 1
 
@@ -289,9 +293,12 @@ class RedAC:
         # Guardar resultados de flujos para terminales
         for bus in self.Terminales:
             # Recuperar índice de bus en matriz de buses de pypower con resultados
-            busindex = numpy.where(self.ACresults[0]['bus'][:,0] == bus.ID)[0].item()
+            busindex = numpy.where(self.ACresults[0]['bus'][:, 0] == bus.ID)[0].item()
             # Guardar resultados respectivos
-            bus.Results[fecha] = {'V': self.ACresults[0]['bus'][busindex,7].item(), 'delta': self.ACresults[0]['bus'][busindex,8].item(), 'P': self.ACresults[0]['bus'][busindex,2].item(), 'Q': self.ACresults[0]['bus'][busindex,3].item()}
+            bus.Results[fecha] = {'V': self.ACresults[0]['bus'][busindex, 7].item(),
+                                  'delta': self.ACresults[0]['bus'][busindex, 8].item(),
+                                  'P': self.ACresults[0]['bus'][busindex, 2].item(),
+                                  'Q': self.ACresults[0]['bus'][busindex, 3].item()}
 
         # Guardar resultados de flujos para líneas y trafos
         for branch in self.Branch:
@@ -302,18 +309,19 @@ class RedAC:
             Qt = self.ACresults[0]['branch'][branch.branchindex, 16].item()
 
             # Calcular pérdidas y cargabilidad de cada rama
-            Ploss= math.fabs(Pf-Pt)
-            Qloss = math.fabs(Qf-Qt)
-            Loading = math.sqrt(math.pow(Pf,2)+math.pow(Qf,2))*100/branch.Snom
+            Ploss = math.fabs(Pf - Pt)
+            Qloss = math.fabs(Qf - Qt)
+            Loading = math.sqrt(math.pow(Pf, 2) + math.pow(Qf, 2)) * 100 / branch.Snom
 
             # Guardar resultados respectivos
             branch.Results[fecha] = {'Pf': Pf,
-                                  'Qf': Qf,
-                                  'Ploss': Ploss,
-                                  'Qloss': Qloss,
-                                  'Loading': Loading}
+                                     'Qf': Qf,
+                                     'Ploss': Ploss,
+                                     'Qloss': Qloss,
+                                     'Loading': Loading}
 
-        self.CDC.Results[fecha] = {'P': self.ACresults[0]['gen'][0, 1].item(), 'Q':self.ACresults[0]['gen'][0, 2].item()}
+        self.CDC.Results[fecha] = {'P': self.ACresults[0]['gen'][0, 1].item(),
+                                   'Q': self.ACresults[0]['gen'][0, 2].item()}
 
     # Función para graficar resultados
     def plotresults(self):
@@ -359,6 +367,24 @@ class RedAC:
             if branch.Save:
                 BranchRes[branch.ID] = branch.Results
         self.Results['Ramas'] = BranchRes
+
+        # guardar resultados para gráficos
+        self.Results['graficos'] = {
+            'cdc_evol_mw': {
+                'title': 'Evolución de inyección de CDC',
+                'x_label': 'Tiempo [s]',
+                'y_label': 'Potencia [MW]',
+                'x_data': self.t,
+                'y_data': [self.CDC.Results[key]['P'] for key in self.CDC.Results.keys()]
+            },
+            'cdc_evol_mvar': {
+                'title': 'Evolución de inyección de CDC',
+                'x_label': 'Tiempo [s]',
+                'y_label': 'Potencia [MVAr]',
+                'x_data': self.t,
+                'y_data': [self.CDC.Results[key]['Q'] for key in self.CDC.Results.keys()]
+            }
+        }
 
         LineasRes = dict()
         for linea in self.Lineas:
@@ -408,10 +434,10 @@ class Term:
                 # Si CDC está conectado en terminal, entonces este se define como barra slack
                 self.Tipo = 3
             elif isinstance(elemento, RedLineas.SER):
-                self.P = self.P + elemento.P[t_index]/(Sbase*1000000)
+                self.P = self.P + elemento.P[t_index] / (Sbase * 1000000)
             else:
-                self.P = self.P + elemento.P[t_index]/(Sbase*1000000)
-                self.Q = self.Q + elemento.Q[t_index]/(Sbase*1000000)
+                self.P = self.P + elemento.P[t_index] / (Sbase * 1000000)
+                self.Q = self.Q + elemento.Q[t_index] / (Sbase * 1000000)
 
         # Si hay consumo de potencia reactiva entonces se define como barra PQ
         if self.Q != 0 and self.Tipo != 3:
@@ -491,7 +517,8 @@ class Cable(Branch):
             raise ValueError('Se intentó interconectar terminales de diferentes voltajes mediante un cable.')
 
         # Llamar constructor de clase branch por herencia
-        super(Cable, self).__init__(linea, CableID, capacidad, largo*resistencia, largo*reactancia, largo*capacitancia, Term1, Term2)
+        super(Cable, self).__init__(linea, CableID, capacidad, largo * resistencia, largo * reactancia,
+                                    largo * capacitancia, Term1, Term2)
 
         # Guardar largo del cable en [m]
         self.largo = largo
@@ -542,7 +569,9 @@ class CDC(ElementoAC):
         # Definir diccionario de resultados de simulaciones
         self.Results = dict()
         # Agregar CDC como generador irrestricto en capacidad
-        Red.genMatrix = numpy.concatenate((Red.genMatrix,[self.Term.ID, 0, 0, 9999, -9999, 1, self.Pnom, 1, self.Pnom, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),0)
+        Red.genMatrix = numpy.concatenate((Red.genMatrix,
+                                           [self.Term.ID, 0, 0, 9999, -9999, 1, self.Pnom, 1, self.Pnom, 0, 0, 0, 0, 0,
+                                            0, 0, 0, 0, 0, 0, 0]), 0)
 
 
 ############################################################
@@ -550,7 +579,7 @@ class CDC(ElementoAC):
 ############################################################
 class SAF(ElementoAC):
     # Constructor clase SAF
-    def __init__(self, Red, SAFID, voltaje, capacidad, Consumo_P, Consumo_Q, ConsumoID = None, Terminal=None):
+    def __init__(self, Red, SAFID, voltaje, capacidad, Consumo_P, Consumo_Q, ConsumoID=None, Terminal=None):
         # Llamar constructor de clase elemento AC por herencia
         super(SAF, self).__init__(Red, voltaje, capacidad, Terminal)
         # ID de SAF
@@ -564,12 +593,14 @@ class SAF(ElementoAC):
         self.fechas = None
         self.t = None
 
+
 ############################################################
 #                      SUBCLASE PVAC                       #
 ############################################################
 class PVAC(ElementoAC):
     # Constructor objeto PV an lado AC
-    def __init__(self, Red, PVacID, voltaje, capacidad , Perfil_P=None, Perfil_Q=None, PerfilID=None, cosphi=None, Terminal=None):
+    def __init__(self, Red, PVacID, voltaje, capacidad, Perfil_P=None, Perfil_Q=None, PerfilID=None, cosphi=None,
+                 Terminal=None):
         # Llamar constructor de clase elemento AC por herencia
         super(PVAC, self).__init__(Red, voltaje, capacidad, Terminal)
         # ID del módulo
@@ -589,6 +620,7 @@ class PVAC(ElementoAC):
         else:
             self.cosphi = cosphi
         # Agregar panel como generador para resolver flujo AC usando PYPOWER
-        Red.genMatrix = numpy.vstack((Red.genMatrix, [self.Term.ID, 0, 0, 0, 0, 1, self.Pnom, 1, self.Pnom, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]))
+        Red.genMatrix = numpy.vstack(
+            (Red.genMatrix, [self.Term.ID, 0, 0, 0, 0, 1, self.Pnom, 1, self.Pnom, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]))
         # Guardar índice de panel PV en matriz de generadores para actualizar valores de potencia en simulaciones
         self.indice = Red.genMatrix.shape[0]
